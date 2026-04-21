@@ -1,0 +1,135 @@
+name: ci-cd-ct-framework
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: "${{ secrets.ACR_LOGIN_SERVER }}"
+  IMAGE_TAG: "${{ github.sha }}"
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform init/plan/apply
+        working-directory: infra/terraform
+        run: |
+          terraform init
+          terraform plan -out tfplan
+          terraform apply -auto-approve tfplan
+
+  predeploy-infra-test:
+    runs-on: ubuntu-latest
+    needs: [infra]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      - name: Pre-deploy infra performance test
+        run: |
+          echo "TODO: deploy hello svc"
+          export TARGET_URL="http://REPLACE_WITH_INGRESS/health"
+          docker run --rm -i -e TARGET_URL grafana/k6 run tests/perf/predeploy-infra.js
+
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and unit/integration tests
+        run: |
+          echo "TODO: build and test"
+
+  build-image:
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push image
+        run: |
+          echo "TODO: docker build"
+          echo "TODO: docker push"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-image, predeploy-infra-test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Argo CD sync
+        run: |
+          echo "TODO: argocd app sync"
+
+  postdeploy-perf-test:
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      - name: Post-deploy performance test
+        run: |
+          export TARGET_URL="http://REPLACE_WITH_INGRESS"
+          docker run --rm -i -e TARGET_URL grafana/k6 run tests/perf/postdeploy-app.js
+
+  chaos-test:
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      - name: Resilience/chaos test
+        run: |
+          kubectl apply -f tests/chaos/pod-kill-catalogo.yaml
+
+  gates-and-report:
+    runs-on: ubuntu-latest
+    needs: [postdeploy-perf-test, chaos-test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluate gates and publish report
+        run: |
+          bash scripts/evaluate-gates.sh

@@ -1,0 +1,9 @@
+image:
+  repository: "REPLACE_WITH_ACR/pedido"
+  tag: "latest"
+
+service:
+  port: 8080
+
+otel:
+  serviceName: "pedido"
