@@ -28,10 +28,28 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Terraform init
         working-directory: infra/terraform
+        env:
+          ARM_USE_OIDC: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
-          terraform init -input=false
+          terraform init -input=false \
+            -backend-config="resource_group_name=${{ secrets.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TF_BACKEND_KEY }}" \
+            -backend-config="tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
+            -backend-config="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -backend-config="client_id=${{ secrets.AZURE_CLIENT_ID }}" \
+            -backend-config="use_oidc=true"
       - name: Terraform apply (idempotent)
         working-directory: infra/terraform
+        env:
+          ARM_USE_OIDC: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           set -euo pipefail
           plan_log="$(mktemp)"
@@ -59,7 +77,12 @@ jobs:
           set -e
 
           if [[ $apply_exit -ne 0 ]]; then
-            if grep -q "cannot re-use a name that is still in use" "$apply_log"; then
+            if grep -q "azurerm_resource_group.main" "$apply_log" && grep -q "already exists - to be managed via Terraform this resource needs to be imported into the State" "$apply_log"; then
+              echo "Detected existing Azure Resource Group outside Terraform state. Importing and retrying..."
+              terraform import azurerm_resource_group.main "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ secrets.AKS_RESOURCE_GROUP }}"
+              terraform plan -out tfplan -input=false
+              terraform apply -auto-approve tfplan
+            elif grep -q "cannot re-use a name that is still in use" "$apply_log"; then
               echo "Detected existing Helm release 'argocd' outside Terraform state. Importing and retrying..."
               terraform import helm_release.argocd argocd/argocd
               terraform plan -out tfplan -input=false

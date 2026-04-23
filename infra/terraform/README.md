@@ -20,6 +20,22 @@ Variáveis relevantes:
 - `argocd_namespace`
 - `enable_argocd_public_access`
 
+## Backend remoto (Azure Storage)
+O state do Terraform usa backend `azurerm`.
+Crie os recursos de state uma vez:
+
+```bash
+az group create --name rg-ctf-tfstate --location brazilsouth
+az storage account create --name stctframeworktfstate --resource-group rg-ctf-tfstate --location brazilsouth --sku Standard_LRS --allow-blob-public-access false
+az storage container create --name tfstate --account-name stctframeworktfstate --auth-mode login
+```
+
+Para bootstrap local, exporte:
+- `TF_BACKEND_RESOURCE_GROUP`
+- `TF_BACKEND_STORAGE_ACCOUNT`
+- `TF_BACKEND_CONTAINER`
+- `TF_BACKEND_KEY` (opcional, default: `terraform.tfstate`)
+
 ## Opcoes de IP estatico (corporativo)
 Por padrao, o Argo CD nao usa IP publico.
 Para habilitar exposicao publica explicitamente:

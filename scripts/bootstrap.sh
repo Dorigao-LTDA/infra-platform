@@ -7,6 +7,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-03f3b99e-3f4f-4159-afa3-c1dd44374397}"
 RG_NAME="${RG_NAME:-rg-ct-framework}"
 AKS_NAME="${AKS_NAME:-aks-ct-framework}"
+TF_BACKEND_RESOURCE_GROUP="${TF_BACKEND_RESOURCE_GROUP:-}"
+TF_BACKEND_STORAGE_ACCOUNT="${TF_BACKEND_STORAGE_ACCOUNT:-}"
+TF_BACKEND_CONTAINER="${TF_BACKEND_CONTAINER:-}"
+TF_BACKEND_KEY="${TF_BACKEND_KEY:-terraform.tfstate}"
 
 if [[ -z "$SUBSCRIPTION_ID" ]]; then
   echo "SUBSCRIPTION_ID is required" >&2
@@ -33,6 +37,34 @@ if ! command -v helm >/dev/null 2>&1; then
   exit 1
 fi
 
+terraform_init_with_backend() {
+  local init_args
+
+  init_args=("-backend-config=resource_group_name=${TF_BACKEND_RESOURCE_GROUP}" "-backend-config=storage_account_name=${TF_BACKEND_STORAGE_ACCOUNT}" "-backend-config=container_name=${TF_BACKEND_CONTAINER}" "-backend-config=key=${TF_BACKEND_KEY}")
+
+  if [[ -n "${AZURE_TENANT_ID:-}" ]]; then
+    init_args+=("-backend-config=tenant_id=${AZURE_TENANT_ID}")
+  fi
+
+  if [[ -n "$SUBSCRIPTION_ID" ]]; then
+    init_args+=("-backend-config=subscription_id=${SUBSCRIPTION_ID}")
+  fi
+
+  if [[ -n "${AZURE_CLIENT_ID:-}" ]]; then
+    init_args+=("-backend-config=client_id=${AZURE_CLIENT_ID}")
+  fi
+
+  if [[ -n "${ARM_USE_OIDC:-}" ]]; then
+    init_args+=("-backend-config=use_oidc=${ARM_USE_OIDC}")
+  fi
+
+  if [[ -n "$TF_BACKEND_RESOURCE_GROUP" && -n "$TF_BACKEND_STORAGE_ACCOUNT" && -n "$TF_BACKEND_CONTAINER" ]]; then
+    terraform init -upgrade "${init_args[@]}"
+  else
+    terraform init -upgrade
+  fi
+}
+
 terraform_apply_with_argocd_recovery() {
   local first_apply_log
   local apply_exit
@@ -45,6 +77,15 @@ terraform_apply_with_argocd_recovery() {
   set -e
 
   if [[ $apply_exit -eq 0 ]]; then
+    rm -f "$first_apply_log"
+    return 0
+  fi
+
+  if grep -q "azurerm_resource_group.main" "$first_apply_log" && grep -q "already exists - to be managed via Terraform this resource needs to be imported into the State" "$first_apply_log"; then
+    echo "Detected existing Azure Resource Group outside Terraform state. Importing and retrying..."
+    terraform import azurerm_resource_group.main "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}"
+    terraform plan -out tfplan
+    terraform apply -auto-approve tfplan
     rm -f "$first_apply_log"
     return 0
   fi
@@ -99,7 +140,7 @@ az account set --subscription "$SUBSCRIPTION_ID"
 
 pushd "$REPO_ROOT/infra/terraform" >/dev/null
   echo "== Terraform apply =="
-  terraform init -upgrade
+  terraform_init_with_backend
   terraform_plan_with_state_recovery
   terraform_apply_with_argocd_recovery
 popd >/dev/null
