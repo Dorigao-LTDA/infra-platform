@@ -66,4 +66,4 @@ resource "azurerm_role_assignment" "acr_pull" {
   principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
 }
 
-# TODO: Grafana Stack (Mimir, Loki, Tempo, Pyroscope, Alloy) via Helm/Argo CD
+# Observability stack can be added as separate Helm releases or via Argo CD apps.

@@ -1,16 +1,20 @@
-name: ci-cd-ct-framework
+name: infra-bootstrap
 
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
 
-env:
-  REGISTRY: "${{ secrets.ACR_LOGIN_SERVER }}"
-  IMAGE_TAG: "${{ github.sha }}"
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: infra-bootstrap-main
+  cancel-in-progress: false
 
 jobs:
-  infra:
+  deploy-base-infra:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,114 +26,79 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-      - name: Terraform init/plan/apply
+      - name: Terraform init
         working-directory: infra/terraform
         run: |
-          terraform init
-          terraform plan -out tfplan
-          terraform apply -auto-approve tfplan
+          terraform init -input=false
+      - name: Terraform apply (idempotent)
+        working-directory: infra/terraform
+        run: |
+          set -euo pipefail
+          plan_log="$(mktemp)"
+          apply_log="$(mktemp)"
 
-  predeploy-infra-test:
-    runs-on: ubuntu-latest
-    needs: [infra]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Azure login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          set +e
+          terraform plan -out tfplan -input=false 2> >(tee "$plan_log" >&2)
+          plan_exit=$?
+          set -e
+
+          if [[ $plan_exit -ne 0 ]]; then
+            if grep -q "Kubernetes cluster unreachable" "$plan_log" && terraform state list | grep -qx "helm_release.argocd"; then
+              echo "Detected stale helm_release.argocd in state while cluster is unreachable. Removing from state and retrying plan..."
+              terraform state rm helm_release.argocd
+              terraform plan -out tfplan -input=false
+            else
+              echo "Terraform plan failed and no known auto-recovery rule matched."
+              exit "$plan_exit"
+            fi
+          fi
+
+          set +e
+          terraform apply -auto-approve tfplan 2> >(tee "$apply_log" >&2)
+          apply_exit=$?
+          set -e
+
+          if [[ $apply_exit -ne 0 ]]; then
+            if grep -q "cannot re-use a name that is still in use" "$apply_log"; then
+              echo "Detected existing Helm release 'argocd' outside Terraform state. Importing and retrying..."
+              terraform import helm_release.argocd argocd/argocd
+              terraform plan -out tfplan -input=false
+              terraform apply -auto-approve tfplan
+            else
+              echo "Terraform apply failed and no known auto-recovery rule matched."
+              exit "$apply_exit"
+            fi
+          fi
+
+          rm -f "$plan_log"
+          rm -f "$apply_log"
       - name: Set AKS context
         uses: azure/aks-set-context@v3
         with:
           resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
           cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
-      - name: Pre-deploy infra performance test
+      - name: Validate Argo CD deployment status
         run: |
-          echo "TODO: deploy hello svc"
-          export TARGET_URL="http://REPLACE_WITH_INGRESS/health"
-          docker run --rm -i -e TARGET_URL grafana/k6 run tests/perf/predeploy-infra.js
+          kubectl rollout status deployment/argocd-server -n argocd --timeout=300s
+      - name: Validate Argo CD service is internal
+        run: |
+          service_type="$(kubectl -n argocd get svc argocd-server -o jsonpath='{.spec.type}')"
+          test "$service_type" = "ClusterIP"
+      - name: Validate Argo CD health via kubectl tunnel
+        run: |
+          set -euo pipefail
+          kubectl -n argocd port-forward svc/argocd-server 8080:443 >/tmp/argocd-port-forward.log 2>&1 &
+          pf_pid=$!
+          trap 'kill "$pf_pid" >/dev/null 2>&1 || true' EXIT
 
-  build-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build and unit/integration tests
-        run: |
-          echo "TODO: build and test"
+          for i in {1..30}; do
+            if curl --fail --silent --show-error --insecure https://127.0.0.1:8080/healthz >/dev/null; then
+              echo "Argo CD is reachable at https://localhost:8080 via kubectl tunnel"
+              exit 0
+            fi
+            sleep 2
+          done
 
-  build-image:
-    runs-on: ubuntu-latest
-    needs: [build-test]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build and push image
-        run: |
-          echo "TODO: docker build"
-          echo "TODO: docker push"
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [build-image, predeploy-infra-test]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Azure login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Argo CD sync
-        run: |
-          echo "TODO: argocd app sync"
-
-  postdeploy-perf-test:
-    runs-on: ubuntu-latest
-    needs: [deploy]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Azure login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Set AKS context
-        uses: azure/aks-set-context@v3
-        with:
-          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
-          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
-      - name: Post-deploy performance test
-        run: |
-          export TARGET_URL="http://REPLACE_WITH_INGRESS"
-          docker run --rm -i -e TARGET_URL grafana/k6 run tests/perf/postdeploy-app.js
-
-  chaos-test:
-    runs-on: ubuntu-latest
-    needs: [deploy]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Azure login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Set AKS context
-        uses: azure/aks-set-context@v3
-        with:
-          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
-          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
-      - name: Resilience/chaos test
-        run: |
-          kubectl apply -f tests/chaos/pod-kill-catalogo.yaml
-
-  gates-and-report:
-    runs-on: ubuntu-latest
-    needs: [postdeploy-perf-test, chaos-test]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Evaluate gates and publish report
-        run: |
-          bash scripts/evaluate-gates.sh
+          echo "Argo CD did not answer on local tunnel" >&2
+          cat /tmp/argocd-port-forward.log >&2 || true
+          exit 1

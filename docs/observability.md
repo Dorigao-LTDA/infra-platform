@@ -1,19 +1,19 @@
 # Observability (OTLP + Grafana stack)
 
 ## Goal
-Centralize metrics, logs, traces, and profiles using only OTLP and Grafana stack components.
+Centralizar métricas, logs, traces e profiles.
 
 ## Components
-- Grafana (dashboards)
-- Mimir (metrics)
-- Loki (logs)
-- Tempo (traces)
-- Pyroscope (profiles)
-- Alloy (OTLP ingest + discovery)
+- Grafana
+- Mimir
+- Loki
+- Tempo
+- Pyroscope
+- Alloy
 
-## Enable
-- Deploy root-app-o11y.yaml (GitOps repo)
-- Ensure namespaces: observability
+## Estado no repositório
+- Values de referência em `deploy/helm/observability/`.
+- A implantação da stack completa é opcional e pode ser adicionada ao fluxo GitOps do ambiente.
 
 ## OTLP conventions
 - OTEL_EXPORTER_OTLP_ENDPOINT points to Alloy

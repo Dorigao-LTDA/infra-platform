@@ -2,44 +2,35 @@
 
 ## Scope
 The framework provides:
-- GitOps platform (Argo CD)
+- GitOps control plane (Argo CD)
 - Kubernetes runtime (AKS)
-- Observability (Grafana stack via OTLP)
-- Continuous testing gates (pre/post deploy)
+- Optional observability components
+- Continuous testing gates (performance + resilience)
 
 ## High-level architecture
 ```mermaid
 flowchart LR
   Dev[Developer] -->|push| Git[GitHub]
-  Git --> Argo[Argo CD]
+  Git --> CI[GitHub Actions]
+  CI --> TF[Terraform]
+  TF --> Azure[Azure RG + AKS + ACR]
+  TF --> Argo[Argo CD via Helm]
   Argo --> AKS[Kubernetes]
-  AKS --> Apps[Microservices]
-  Apps -->|OTLP| Alloy[Grafana Alloy]
-  Alloy --> Mimir[Mimir]
-  Alloy --> Loki[Loki]
-  Alloy --> Tempo[Tempo]
-  Alloy --> Pyro[Pyroscope]
-  Grafana --> Mimir
-  Grafana --> Loki
-  Grafana --> Tempo
-  Grafana --> Pyro
+  CI --> NFR[Testes Nao Funcionais]
+  NFR --> Gates[Gate Final]
 ```
 
 ## Resource Groups
 - **rg-ct-framework**: Main RG for AKS, VNet, ACR (deleted by `terraform destroy`)
-- **rg-ct-framework-networking**: Persistent RG for static public IP (manually created, NOT deleted by terraform)
-  - Static IP must be created manually before bootstrap: `az network public-ip create -g rg-ct-framework-networking -n ingress-ct-framework --sku Standard --allocation-method Static`
-  - Ensures DNS stability across infrastructure rebuild cycles
 
 ## Network
-- Ingress NGINX exposes Argo CD with TLS and Basic Auth.
-- Static public IP in rg-ct-framework-networking persists across `terraform destroy` cycles.
-- Argo CD routes to ClusterIP services.
+- O serviço `argocd-server` é `ClusterIP`.
+- O acesso administrativo é feito por túnel local com `kubectl port-forward`.
+- URL de acesso local: `https://localhost:8080`.
 
 ## Identity and access
-- Basic Auth at Ingress for UI gate.
-- Argo CD admin credentials stored in secret.
-- Git access via PAT secret.
+- Azure OIDC para pipeline (GitHub Actions).
+- Identidade gerenciada opcional para External Secrets + Key Vault.
 
 ## Sequence (GitOps sync)
 ```mermaid

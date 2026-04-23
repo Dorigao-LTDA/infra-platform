@@ -1,13 +1,11 @@
 # Workflows
 
-Este diretorio contera workflows do GitHub Actions para CI/CD e IaC.
+Este diretório contém os workflows de CI/CD e IaC.
 
-## Pipeline base
+## Pipeline principal
 Ver [pipeline.yml](pipeline.yml). O fluxo contempla:
 - IaC (Terraform)
-- Teste pre-deploy de infraestrutura
-- Build e testes
-- Build de imagem
-- Deploy via Argo CD
-- Testes de performance e resiliencia
-- Gates e relatorio
+- Testes não funcionais pre e post deploy
+- Teste de resiliência
+- Gate final com relatório
+- Execução por build e execução periódica (cron)

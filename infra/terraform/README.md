@@ -1,21 +1,29 @@
 # Terraform
 
-Este diretorio contem o esqueleto de IaC para provisionar a infraestrutura (AKS, ACR, rede, observabilidade).
-
-## Componentes alvo
+Este diretório provisiona a infraestrutura principal no Azure:
 - Resource Group
+- VNet/Subnet
 - AKS
 - ACR
-- Rede (VNet/Subnets)
-- Observabilidade Grafana Stack (Mimir, Loki, Tempo, Pyroscope, Alloy)
+- Argo CD (Helm)
+- Exposição pública opcional do Argo CD (desabilitada por padrão)
 
-## Proximos passos
-- Implementar recursos base no [main.tf](main.tf).
-- Ajustar variaveis e outputs para uso em CI/CD.
-- Adicionar ambientes (dev/stage/prod) conforme necessario.
+## Acesso do Argo CD
+O serviço `argocd-server` é criado como `ClusterIP`.
+O acesso recomendado é via túnel local:
+
+```bash
+kubectl -n argocd port-forward svc/argocd-server 8080:443
+```
+
+Variáveis relevantes:
+- `argocd_namespace`
+- `enable_argocd_public_access`
 
 ## Opcoes de IP estatico (corporativo)
-Por padrao, o IP publico do ingress pode ser externo. Para gerenciar tudo via Terraform:
+Por padrao, o Argo CD nao usa IP publico.
+Para habilitar exposicao publica explicitamente:
+- `enable_argocd_public_access = true`
 - `manage_networking_rg = true` para criar o RG de networking.
 - `manage_ingress_public_ip = true` para criar o Public IP.
 
@@ -31,19 +39,6 @@ Variaveis relevantes:
 - `ingress_public_ip_sku`
 - `ingress_public_ip_allocation_method`
 
-## NodePort NSG rule (opcional)
-Para permitir o acesso externo direto aos NodePorts do ingress:
-- `manage_nodeport_nsg_rule = true`
-- `aks_node_nsg_name = "<nome do NSG do agent pool>"`
-
-Para descobrir o NSG do agent pool:
-```bash
-terraform output -raw aks_node_resource_group
-az network nsg list -g <NODE_RG> -o table
-```
-
-O NSG fica no node resource group do AKS (ex.: `MC_rg-ct-framework_aks-ct-framework_brazilsouth`).
-
 ## External Secrets + Key Vault (repo privado)
 Para GitOps corporativo com repo privado:
 - `enable_external_secrets = true`
@@ -55,5 +50,5 @@ az keyvault secret set --vault-name <KV_NAME> --name argocd-repo-token --value "
 az keyvault secret set --vault-name <KV_NAME> --name argocd-basic-auth --value "admin:$(openssl passwd -apr1 'SENHA')"
 ```
 
-Atualize `deploy/gitops/overlays/corporate/values.env` com `tenantId` e `keyVaultUrl`
-antes de executar o bootstrap para aplicar o manifest de External Secrets.
+Depois do `terraform apply`, use os outputs `tenant_id` e `key_vault_uri` para
+configurar seu `SecretStore`/`ExternalSecret` no fluxo GitOps do ambiente.

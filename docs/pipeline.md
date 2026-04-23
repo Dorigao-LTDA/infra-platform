@@ -1,30 +1,19 @@
-# CI/CD and pipeline
+# Pipeline de Bootstrap de Infra
 
-## Stages
-1) Build and test
-2) Container image publish
-3) GitOps update (values/versions)
-4) Continuous tests (pre-deploy)
-5) Deploy via Argo CD
-6) Post-deploy tests and gates
+Arquivo: `.github/workflows/pipeline.yml`
 
-## Sequence (pipeline)
-```mermaid
-sequenceDiagram
-  participant Dev as Developer
-  participant CI as CI Pipeline
-  participant Registry as ACR
-  participant GitOps as GitOps Repo
-  participant Argo as Argo CD
-  participant AKS as AKS
-  participant Tests as Tests
+## Gatilhos
+- `push` na branch `main`
+- `workflow_dispatch`
 
-  Dev->>CI: push code
-  CI->>CI: unit/integration tests
-  CI->>Registry: push image
-  CI->>GitOps: update values
-  GitOps-->>Argo: sync
-  Argo->>AKS: deploy
-  Tests->>AKS: pre/post deploy tests
-  Tests-->>CI: gate results
-```
+## Objetivo
+- Aplicar infraestrutura base de forma idempotente.
+- Evitar conflito quando o release Helm do Argo CD já existir fora do state.
+- Validar acesso ao Argo CD por túnel local (`kubectl port-forward`).
+
+## Estágios
+1. `deploy-base-infra`: `terraform init/plan/apply`.
+2. Auto-recovery para drift (`terraform import helm_release.argocd argocd/argocd`) quando necessário.
+3. Validação do rollout do `argocd-server`.
+4. Validação de serviço interno (`ClusterIP`).
+5. Validação de health (`/healthz`) por `kubectl port-forward`.

@@ -61,6 +61,12 @@ variable "networking_resource_group_name" {
   default     = "rg-ct-framework-networking"
 }
 
+variable "enable_argocd_public_access" {
+  type        = bool
+  description = "Expose Argo CD using Azure public IP/load balancer"
+  default     = false
+}
+
 variable "manage_networking_rg" {
   type        = bool
   description = "Whether Terraform should create/manage the networking resource group"
@@ -115,16 +121,16 @@ variable "argocd_chart_version" {
   default     = "6.7.11"
 }
 
-variable "manage_nodeport_nsg_rule" {
-  type        = bool
-  description = "Whether Terraform should manage a NodePort NSG rule in the AKS node RG"
-  default     = false
+variable "argocd_domain" {
+  type        = string
+  description = "Argo CD public domain"
+  default     = "argocd.dorigao.dev.br"
 }
 
-variable "aks_node_nsg_name" {
+variable "argocd_public_ip" {
   type        = string
-  description = "AKS node pool NSG name (in the node resource group)"
-  default     = ""
+  description = "Static public IP that Argo CD service must use"
+  default     = "20.197.180.231"
 }
 
 variable "enable_external_secrets" {

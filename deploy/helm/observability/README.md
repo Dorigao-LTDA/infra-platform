@@ -1,6 +1,6 @@
 # Observability Helm
 
-Este diretorio centraliza referencias da stack Grafana.
+Este diretório centraliza values de referência para stack Grafana.
 
 ## Componentes
 - Grafana
@@ -11,9 +11,6 @@ Este diretorio centraliza referencias da stack Grafana.
 - Grafana Alloy
 
 ## Diretriz
-- Ingestao 100% OTLP
-- Descoberta automatica via Alloy (K8s + Azure)
-
-## Proximos passos
-- Definir charts/values para cada componente
-- Publicar tudo via Argo CD
+- ingestão OTLP;
+- descoberta via Alloy;
+- integração via GitOps.

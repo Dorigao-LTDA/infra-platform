@@ -1,10 +1,10 @@
 # Testes de Resiliencia (Chaos)
 
-Experimentos de falha (pod kill, latency, network loss) para validar resiliencia.
+O pipeline utiliza um teste de resiliência sem dependência externa:
+- remoção de um pod do `argocd-server`;
+- validação de recuperação do deployment.
 
-## Proximos passos
-- Definir experimento base
-- Criar politicas de rollback
+Script:
+- `scripts/run-resilience.sh`
 
-## Experimentos base
-- [tests/chaos/pod-kill-catalogo.yaml](tests/chaos/pod-kill-catalogo.yaml)
+O manifesto em `tests/chaos/pod-kill-catalogo.yaml` continua como exemplo para ambientes com Chaos Mesh.

@@ -1,22 +1,18 @@
-# Continuous Testing Framework (TCC)
+# Documentação do projeto
 
-Documentation for a TCC project focused on continuous testing, GitOps, and observability in Kubernetes.
+## Ordem recomendada
+1. [quickstart.md](./quickstart.md)
+2. [deploy.md](./deploy.md)
+3. [pipeline.md](./pipeline.md)
+4. [testing.md](./testing.md)
 
-## Read this first
-- Quickstart: ./quickstart.md
-- Deploy guide: ./deploy.md
-- Architecture: ./architecture.md
-- GitOps model: ./gitops.md
-- CI/CD and pipeline: ./pipeline.md
-- Observability: ./observability.md
-- Testing and gates: ./testing.md
-- Operations and teardown: ./operations.md
+## Referências
+- [architecture.md](./architecture.md)
+- [gitops.md](./gitops.md)
+- [observability.md](./observability.md)
+- [operations.md](./operations.md)
 
-## Defaults (override via env vars)
-- Argo CD domain: argocd.dorigao.dev.br (ARGOCD_DOMAIN)
-- GitOps repo: https://github.com/Dorigao-LTDA/central-gitops.git (REPO_URL)
-- Services repo: https://github.com/Dorigao-LTDA/continuous-testing-framework.git (SERVICES_REPO_URL)
-- Kustomize values: deploy/gitops/overlays/corporate/values.env
-
-## Diagrams
-- Excalidraw: ./diagrams/architecture.excalidraw, ./diagrams/pipeline.excalidraw, ./diagrams/testing.excalidraw, ./diagrams/gitops.excalidraw
+## Padrões definidos
+- Argo CD interno via `ClusterIP`.
+- Acesso ao Argo CD via `kubectl -n argocd port-forward svc/argocd-server 8080:443`.
+- Bootstrap de infra base via GitHub Actions em push na `main` e execução manual.

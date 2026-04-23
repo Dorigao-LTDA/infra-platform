@@ -1,8 +1,10 @@
 # Helm Charts
 
-Este diretorio contera os charts dos microservicos e dependencias.
+Este diretório contém:
+- chart base para microserviços (`service-chart`);
+- values por serviço (`values/`);
+- values de referência para observabilidade (`observability/`).
 
-## Proximos passos
-- Criar chart base por servico
-- Definir values por ambiente
-- Adicionar charts da observabilidade (Grafana, Mimir, Loki, Tempo, Pyroscope, Alloy)
+## Uso rápido
+1. Ajustar `repository` e `tag` em `deploy/helm/values/*.yaml`.
+2. Publicar chart/values no fluxo GitOps do ambiente.

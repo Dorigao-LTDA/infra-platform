@@ -6,9 +6,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 TEST_KIND="${1:-predeploy}"
 TARGET_URL="${TARGET_URL:-}"
+SUMMARY_EXPORT="${SUMMARY_EXPORT:-}"
 
 if [[ -z "$TARGET_URL" ]]; then
-  echo "TARGET_URL is required (ex.: https://argocd.dorigao.dev.br/)." >&2
+  echo "TARGET_URL is required (ex.: https://localhost:8080/healthz)." >&2
   exit 1
 fi
 
@@ -31,12 +32,26 @@ if [[ ! -f "$TEST_FILE" ]]; then
 fi
 
 if command -v k6 >/dev/null 2>&1; then
-  TARGET_URL="$TARGET_URL" k6 run "$TEST_FILE"
+  if [[ -n "$SUMMARY_EXPORT" ]]; then
+    TARGET_URL="$TARGET_URL" k6 run --summary-export "$SUMMARY_EXPORT" "$TEST_FILE"
+  else
+    TARGET_URL="$TARGET_URL" k6 run "$TEST_FILE"
+  fi
   exit 0
 fi
 
 if command -v docker >/dev/null 2>&1; then
-  docker run --rm -i -e TARGET_URL="$TARGET_URL" -v "$TEST_FILE":/test.js grafana/k6 run /test.js
+  docker_args=(-e TARGET_URL="$TARGET_URL" -v "$TEST_FILE":/test.js)
+  if [[ -n "$SUMMARY_EXPORT" ]]; then
+    summary_abs="$(realpath "$SUMMARY_EXPORT")"
+    summary_dir="$(dirname "$summary_abs")"
+    summary_file="$(basename "$summary_abs")"
+    mkdir -p "$summary_dir"
+    docker_args+=(-v "$summary_dir":/summary)
+    docker run --rm -i "${docker_args[@]}" grafana/k6 run --summary-export "/summary/$summary_file" /test.js
+  else
+    docker run --rm -i "${docker_args[@]}" grafana/k6 run /test.js
+  fi
   exit 0
 fi
 

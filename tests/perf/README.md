@@ -1,24 +1,21 @@
 # Testes de Performance (k6)
 
-Scripts de carga e cenarios para validar SLOs de latencia e throughput.
+## Scripts
+- `tests/perf/predeploy-infra.js`
+- `tests/perf/postdeploy-app.js`
 
-## Proximos passos
-- Criar cenarios por servico
-- Definir thresholds por metrica
-- Criar teste pre-deploy de infra (hello svc + k6)
+## Thresholds
+- `http_req_failed < 1%`
+- `http_req_duration p95 < 300ms`
 
-## Scripts base
-- [tests/perf/predeploy-infra.js](tests/perf/predeploy-infra.js)
-- [tests/perf/postdeploy-app.js](tests/perf/postdeploy-app.js)
+## Execução
+```bash
+TARGET_URL=https://localhost:8080/healthz ./scripts/run-perf.sh predeploy
+TARGET_URL=https://localhost:8080/healthz ./scripts/run-perf.sh postdeploy
+```
 
-## Executar
-Opcoes:
-- Com k6 local:
-	- `TARGET_URL=https://argocd.dorigao.dev.br/ ./scripts/run-perf.sh predeploy`
-	- `TARGET_URL=https://argocd.dorigao.dev.br/ ./scripts/run-perf.sh postdeploy`
-- Com Docker:
-	- `TARGET_URL=https://argocd.dorigao.dev.br/ ./scripts/run-perf.sh predeploy`
-
-Observacoes:
-- Ajuste `TARGET_URL` para o endpoint que deseja medir (ex.: /health de um servico).
-- Os thresholds ficam no propio arquivo .js de cada teste.
+## Ajuste de carga
+Variáveis opcionais:
+- `K6_VUS`
+- `K6_DURATION`
+- `SUMMARY_EXPORT` (gera arquivo JSON de resumo)

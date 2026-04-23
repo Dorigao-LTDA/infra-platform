@@ -2,15 +2,16 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 
 export const options = {
-  vus: 10,
-  duration: "1m",
+  vus: Number(__ENV.K6_VUS || 10),
+  duration: __ENV.K6_DURATION || "1m",
+  insecureSkipTLSVerify: true,
   thresholds: {
     http_req_failed: ["rate<0.01"],
     http_req_duration: ["p(95)<300"],
   },
 };
 
-const target = __ENV.TARGET_URL || "http://localhost:8080/health";
+const target = __ENV.TARGET_URL || "https://localhost:8080/healthz";
 
 export default function () {
   const res = http.get(target);

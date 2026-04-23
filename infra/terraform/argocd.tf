@@ -24,11 +24,13 @@ resource "helm_release" "argocd" {
 
   values = [<<-YAML
     server:
+      service:
+        type: ClusterIP
       ingress:
         enabled: false
     configs:
       cm:
-        server.insecure: true
+        url: https://localhost:8080
   YAML
   ]
 }

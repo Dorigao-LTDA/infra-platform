@@ -43,3 +43,18 @@ output "external_secrets_identity_client_id" {
   value       = try(azurerm_user_assigned_identity.external_secrets[0].client_id, "")
   description = "Client ID for External Secrets workload identity"
 }
+
+output "argocd_public_ip" {
+  value       = var.enable_argocd_public_access ? local.ingress_public_ip_address : ""
+  description = "Public IP expected for Argo CD endpoint when public access is enabled"
+}
+
+output "argocd_url" {
+  value       = "https://localhost:8080"
+  description = "Argo CD URL via kubectl port-forward"
+}
+
+output "argocd_port_forward_command" {
+  value       = "kubectl -n ${var.argocd_namespace} port-forward svc/argocd-server 8080:443"
+  description = "Command to access Argo CD using local tunnel"
+}

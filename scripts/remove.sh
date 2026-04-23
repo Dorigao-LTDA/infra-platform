@@ -37,19 +37,8 @@ az account set --subscription "$SUBSCRIPTION_ID"
 echo "== AKS credentials =="
 az aks get-credentials --resource-group "$RG_NAME" --name "$AKS_NAME" --overwrite-existing || true
 
-echo "== Remove Argo CD applications =="
-for app in ct-framework ct-framework-o11y ingress-nginx argocd-access; do
-  kubectl -n argocd delete application "$app" --ignore-not-found
- done
-
-# Give Argo CD some time to remove resources
-sleep 10
-
-echo "== Remove ingress services =="
-kubectl -n ingress-nginx delete svc ingress-nginx-controller ingress-nginx-controller-admission --ignore-not-found
-
 # Remove Argo CD and related namespaces
-for ns in argocd ingress-nginx observability app chaos-testing; do
+for ns in argocd observability app chaos-testing; do
   kubectl delete namespace "$ns" --ignore-not-found
  done
 
