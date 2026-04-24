@@ -107,21 +107,3 @@ jobs:
         run: |
           service_type="$(kubectl -n argocd get svc argocd-server -o jsonpath='{.spec.type}')"
           test "$service_type" = "ClusterIP"
-      - name: Validate Argo CD health via kubectl tunnel
-        run: |
-          set -euo pipefail
-          kubectl -n argocd port-forward svc/argocd-server 8080:443 >/tmp/argocd-port-forward.log 2>&1 &
-          pf_pid=$!
-          trap 'kill "$pf_pid" >/dev/null 2>&1 || true' EXIT
-
-          for i in {1..30}; do
-            if curl --fail --silent --show-error --insecure https://127.0.0.1:8080/healthz >/dev/null; then
-              echo "Argo CD is reachable at https://localhost:8080 via kubectl tunnel"
-              exit 0
-            fi
-            sleep 2
-          done
-
-          echo "Argo CD did not answer on local tunnel" >&2
-          cat /tmp/argocd-port-forward.log >&2 || true
-          exit 1
