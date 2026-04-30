@@ -1,69 +1,81 @@
-provider "azurerm" {
-  features {}
-  resource_provider_registrations = "none"
+provider "kubernetes" {
+  host                   = module.cluster.kube_config_host
+  client_certificate     = base64decode(module.cluster.kube_config_client_certificate)
+  client_key             = base64decode(module.cluster.kube_config_client_key)
+  cluster_ca_certificate = base64decode(module.cluster.kube_config_cluster_ca_certificate)
 }
 
-resource "azurerm_resource_group" "main" {
-  name     = var.resource_group_name
-  location = var.location
-}
-
-# Note: rg-ct-framework-networking is managed externally (not by Terraform)
-# This RG holds the static Public IP for Ingress and persists across terraform destroy
-
-resource "azurerm_virtual_network" "main" {
-  name                = "${var.resource_group_name}-vnet"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  address_space       = var.network_address_space
-}
-
-resource "azurerm_subnet" "aks" {
-  name                 = "aks-subnet"
-  resource_group_name  = azurerm_resource_group.main.name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = var.subnet_address_prefix
-}
-
-resource "azurerm_container_registry" "main" {
-  name                = var.acr_name
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  sku                 = var.acr_sku
-  admin_enabled       = false
-}
-
-resource "azurerm_kubernetes_cluster" "main" {
-  name                = var.aks_name
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  dns_prefix          = var.aks_name
-
-  network_profile {
-    network_plugin = "kubenet"
-    service_cidr     = "10.1.0.0/16"
-    dns_service_ip   = "10.1.0.10"
+provider "helm" {
+  kubernetes {
+    host                   = module.cluster.kube_config_host
+    client_certificate     = base64decode(module.cluster.kube_config_client_certificate)
+    client_key             = base64decode(module.cluster.kube_config_client_key)
+    cluster_ca_certificate = base64decode(module.cluster.kube_config_cluster_ca_certificate)
   }
-
-  default_node_pool {
-    name                = "default"
-    node_count          = var.node_count
-    vm_size             = var.node_vm_size
-    vnet_subnet_id      = azurerm_subnet.aks.id
-    orchestrator_version = var.kubernetes_version != "" ? var.kubernetes_version : null
-  }
-
-  identity {
-    type = "SystemAssigned"
-  }
-
-  oidc_issuer_enabled = true
 }
 
-resource "azurerm_role_assignment" "acr_pull" {
-  scope                = azurerm_container_registry.main.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
+module "cluster" {
+  source = "./modules/cluster"
+
+  resource_group_name   = var.resource_group_name
+  location              = var.location
+  network_address_space = var.network_address_space
+  subnet_address_prefix = var.subnet_address_prefix
+  aks_name              = var.aks_name
+  kubernetes_version    = var.kubernetes_version
+  node_count            = var.node_count
+  node_vm_size          = var.node_vm_size
+  acr_name              = var.acr_name
+  acr_sku               = var.acr_sku
 }
 
-# Observability stack can be added as separate Helm releases or via Argo CD apps.
+module "argocd" {
+  source = "./modules/argocd"
+
+  argocd_namespace     = var.argocd_namespace
+  argocd_chart_repo    = var.argocd_chart_repo
+  argocd_chart_name    = var.argocd_chart_name
+  argocd_chart_version = var.argocd_chart_version
+
+  providers = {
+    helm       = helm
+    kubernetes = kubernetes
+  }
+}
+
+module "ingress" {
+  source = "./modules/ingress"
+
+  enable_argocd_public_access         = var.enable_argocd_public_access
+  manage_networking_rg                = var.manage_networking_rg
+  manage_ingress_public_ip            = var.manage_ingress_public_ip
+  networking_resource_group_name      = var.networking_resource_group_name
+  location                            = var.location
+  ingress_public_ip_name              = var.ingress_public_ip_name
+  ingress_public_ip_sku               = var.ingress_public_ip_sku
+  ingress_public_ip_allocation_method = var.ingress_public_ip_allocation_method
+  argocd_public_ip                    = var.argocd_public_ip
+}
+
+module "external_secrets" {
+  source = "./modules/external-secrets"
+  count  = var.enable_external_secrets ? 1 : 0
+
+  enable_external_secrets          = var.enable_external_secrets
+  location                         = var.location
+  resource_group_name              = var.resource_group_name
+  key_vault_name                   = var.key_vault_name
+  key_vault_sku_name               = var.key_vault_sku_name
+  external_secrets_namespace       = var.external_secrets_namespace
+  external_secrets_chart_repo      = var.external_secrets_chart_repo
+  external_secrets_chart_name      = var.external_secrets_chart_name
+  external_secrets_chart_version   = var.external_secrets_chart_version
+  external_secrets_service_account = var.external_secrets_service_account
+  aks_oidc_issuer_url              = module.cluster.aks_oidc_issuer_url
+  tenant_id                        = data.azurerm_client_config.current.tenant_id
+  tenant_object_id                 = data.azurerm_client_config.current.object_id
+
+  providers = {
+    helm = helm
+  }
+}

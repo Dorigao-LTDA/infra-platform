@@ -14,17 +14,17 @@ output "acr_name" {
 }
 
 output "acr_login_server" {
-  value       = azurerm_container_registry.main.login_server
+  value       = module.cluster.acr_login_server
   description = "ACR login server"
 }
 
 output "aks_node_resource_group" {
-  value       = azurerm_kubernetes_cluster.main.node_resource_group
+  value       = module.cluster.aks_node_resource_group
   description = "AKS node resource group name"
 }
 
 output "kube_config_raw" {
-  value       = azurerm_kubernetes_cluster.main.kube_config_raw
+  value       = module.cluster.kube_config_raw
   description = "Kubeconfig"
   sensitive   = true
 }
@@ -35,17 +35,17 @@ output "tenant_id" {
 }
 
 output "key_vault_uri" {
-  value       = try(azurerm_key_vault.gitops[0].vault_uri, "")
+  value       = try(module.external_secrets[0].key_vault_uri, "")
   description = "Key Vault URI for GitOps secrets"
 }
 
 output "external_secrets_identity_client_id" {
-  value       = try(azurerm_user_assigned_identity.external_secrets[0].client_id, "")
+  value       = try(module.external_secrets[0].external_secrets_identity_client_id, "")
   description = "Client ID for External Secrets workload identity"
 }
 
 output "argocd_public_ip" {
-  value       = var.enable_argocd_public_access ? local.ingress_public_ip_address : ""
+  value       = module.ingress.public_ip_address
   description = "Public IP expected for Argo CD endpoint when public access is enabled"
 }
 

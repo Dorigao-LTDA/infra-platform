@@ -1,6 +1,3 @@
-# Static Public IP for Argo CD access
-# Supports either Terraform-managed or externally managed public IP
-
 resource "azurerm_resource_group" "networking" {
   count    = var.enable_argocd_public_access && var.manage_networking_rg ? 1 : 0
   name     = var.networking_resource_group_name
@@ -16,6 +13,7 @@ locals {
   networking_rg_name = var.enable_argocd_public_access ? (
     var.manage_networking_rg ? azurerm_resource_group.networking[0].name : data.azurerm_resource_group.networking[0].name
   ) : null
+
   networking_rg_location = var.enable_argocd_public_access ? (
     var.manage_networking_rg ? azurerm_resource_group.networking[0].location : data.azurerm_resource_group.networking[0].location
   ) : null
@@ -47,9 +45,4 @@ check "argocd_static_ip_match" {
     condition     = !var.enable_argocd_public_access || local.ingress_public_ip_address == var.argocd_public_ip
     error_message = "Configured argocd_public_ip differs from ingress public IP."
   }
-}
-
-output "loadbalancer_public_ip" {
-  value       = var.enable_argocd_public_access ? local.ingress_public_ip_address : ""
-  description = "Static public IP used by Argo CD service (LoadBalancer)"
 }

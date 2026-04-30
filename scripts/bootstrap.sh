@@ -81,9 +81,9 @@ terraform_apply_with_argocd_recovery() {
     return 0
   fi
 
-  if grep -q "azurerm_resource_group.main" "$first_apply_log" && grep -q "already exists - to be managed via Terraform this resource needs to be imported into the State" "$first_apply_log"; then
+  if grep -q "module.cluster.azurerm_resource_group.main" "$first_apply_log" && grep -q "already exists - to be managed via Terraform this resource needs to be imported into the State" "$first_apply_log"; then
     echo "Detected existing Azure Resource Group outside Terraform state. Importing and retrying..."
-    terraform import azurerm_resource_group.main "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}"
+    terraform import module.cluster.azurerm_resource_group.main "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}"
     terraform plan -out tfplan
     terraform apply -auto-approve tfplan
     rm -f "$first_apply_log"
@@ -93,7 +93,7 @@ terraform_apply_with_argocd_recovery() {
   # Recover from a common drift case: Helm release exists in cluster but not in Terraform state.
   if grep -q "cannot re-use a name that is still in use" "$first_apply_log"; then
     echo "Detected existing Helm release 'argocd' outside Terraform state. Importing and retrying..."
-    terraform import helm_release.argocd argocd/argocd
+    terraform import module.argocd.helm_release.argocd argocd/argocd
     terraform plan -out tfplan
     terraform apply -auto-approve tfplan
     rm -f "$first_apply_log"
@@ -120,9 +120,9 @@ terraform_plan_with_state_recovery() {
     return 0
   fi
 
-  if grep -q "Kubernetes cluster unreachable" "$first_plan_log" && terraform state list | grep -qx "helm_release.argocd"; then
+  if grep -q "Kubernetes cluster unreachable" "$first_plan_log" && terraform state list | grep -qx "module.argocd.helm_release.argocd"; then
     echo "Detected stale helm_release.argocd in state while cluster is unreachable. Removing from state and retrying plan..."
-    terraform state rm helm_release.argocd
+    terraform state rm module.argocd.helm_release.argocd
     terraform plan -out tfplan
     rm -f "$first_plan_log"
     return 0
