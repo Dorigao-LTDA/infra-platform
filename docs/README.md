@@ -16,3 +16,4 @@
 - Argo CD interno via `ClusterIP`.
 - Acesso ao Argo CD via `kubectl -n argocd port-forward svc/argocd-server 8080:443`.
 - Bootstrap de infra base via GitHub Actions em push na `main` e execução manual.
+- Terraform modular: cluster, argocd, ingress, external-secrets (ver `architecture.md` e `deploy.md`).

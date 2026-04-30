@@ -20,6 +20,13 @@ flowchart LR
   NFR --> Gates[Gate Final]
 ```
 
+## Terraform modules
+The infrastructure is organized as modular Terraform with four child modules:
+- **cluster**: Resource Group, VNet, Subnet, ACR, AKS, AcrPull role assignment
+- **argocd**: Kubernetes/Helm providers + Argo CD Helm release (ClusterIP)
+- **ingress**: Optional Public IP and networking RG for Argo CD exposure
+- **external-secrets**: Optional Key Vault, User Assigned Identity, Federated Identity Credential, External Secrets Operator
+
 ## Resource Groups
 - **rg-ct-framework**: Main RG for AKS, VNet, ACR (deleted by `terraform destroy`)
 
