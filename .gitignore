@@ -22,3 +22,8 @@ override.tf.json
 # OS/editor
 .DS_Store
 Thumbs.db
+
+# AI Stuff
+
+AGENTS.MD
+.opencode/*
