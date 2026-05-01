@@ -1,9 +1,0 @@
-image:
-  repository: "REPLACE_WITH_ACR/catalogo"
-  tag: "latest"
-
-service:
-  port: 8080
-
-otel:
-  serviceName: "catalogo"
