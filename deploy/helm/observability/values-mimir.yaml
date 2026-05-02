@@ -1,6 +1,0 @@
-mimir:
-  structuredConfig:
-    limits:
-      ingestion_rate: 20000
-gateway:
-  enabled: true

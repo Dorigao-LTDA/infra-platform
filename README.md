@@ -1,20 +1,15 @@
-# Continuous Testing Framework (TCC)
+# Dorigao-LTDA / infra-platform
 
-Projeto acadêmico focado em **esteira de deployment com Argo CD no Azure (AKS)** e execução contínua de testes não funcionais de **performance** e **resiliência**.
+Base de infraestrutura para a organização **Dorigao-LTDA**. Provisiona recursos base no Azure via Terraform (AKS, ACR, VNet, Argo CD) e gerencia o fluxo GitOps.
 
-## Estado atual do projeto
+## Estado atual
 - Infraestrutura provisionada por Terraform em Azure (RG, VNet/Subnet, AKS, ACR).
 - Argo CD instalado via Helm/Terraform.
 - Argo CD exposto internamente (`ClusterIP`) e acessível por `kubectl port-forward`.
 - Pipeline GitHub Actions para bootstrap de infra base em `push` na `main` e `workflow_dispatch`.
 
-## Documentação
-- [Visão geral](docs/README.md)
-- [Quickstart](docs/quickstart.md)
-- [Deploy](docs/deploy.md)
-- [Arquitetura](docs/architecture.md)
-- [Pipeline](docs/pipeline.md)
-- [Testes e gates](docs/testing.md)
-- [Operação e remoção](docs/operations.md)
-- [GitOps](docs/gitops.md)
-- [Observabilidade](docs/observability.md)
+## Estrutura
+- [`infra/terraform/`](infra/terraform/) — Código Terraform modular (cluster, argocd, ingress, external-secrets).
+- [`deploy/helm/service-chart/`](deploy/helm/service-chart/) — Helm chart genérico para microserviços com injeção OTLP.
+- [`deploy/gitops/`](deploy/gitops/) — Manifestos Argo CD (Application/ApplicationSet).
+- [`.github/workflows/`](.github/workflows/) — Workflows de CI/CD (bootstrap e destroy).

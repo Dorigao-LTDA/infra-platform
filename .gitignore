@@ -25,5 +25,8 @@ Thumbs.db
 
 # AI Stuff
 
-AGENTS.MD
+AGENTS.md
 .opencode/*
+
+# Nested git working copies
+deploy/gitops/

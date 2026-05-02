@@ -1,10 +1,7 @@
 # Helm Charts
 
-Este diretório contém:
-- chart base para microserviços (`service-chart`);
-- values por serviço (`values/`);
-- values de referência para observabilidade (`observability/`).
+Este diretório contém o chart base para microserviços (`service-chart`).
 
 ## Uso rápido
-1. Ajustar `repository` e `tag` em `deploy/helm/values/*.yaml`.
+1. Ajustar `repository` e `tag` no `values.yaml` do serviço desejado.
 2. Publicar chart/values no fluxo GitOps do ambiente.
