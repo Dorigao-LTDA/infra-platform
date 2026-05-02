@@ -115,3 +115,19 @@ jobs:
         run: |
           service_type="$(kubectl -n argocd get svc argocd-server -o jsonpath='{.spec.type}')"
           test "$service_type" = "ClusterIP"
+      - name: Bootstrap GitOps Applications
+        run: |
+          echo "Applying GitOps root applications..."
+          kubectl apply -f https://raw.githubusercontent.com/Dorigao-LTDA/central-gitops/main/root-app.yaml
+          kubectl apply -f https://raw.githubusercontent.com/Dorigao-LTDA/central-gitops/main/root-app-o11y.yaml
+          
+          echo "Waiting for applications to be created..."
+          sleep 10
+          
+          echo "GitOps applications status:"
+          kubectl get applications -n argocd
+          
+          echo ""
+          echo "GitOps bootstrap completed!"
+          echo "IMPORTANT: Check the README at https://github.com/Dorigao-LTDA/central-gitops/blob/main/README.md"
+          echo "for post-bootstrap configuration steps (ACR, Ingress IP, etc.)"
