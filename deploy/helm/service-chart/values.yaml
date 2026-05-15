@@ -13,10 +13,32 @@ service:
 ingress:
   enabled: false
   className: ""
+  annotations: {}
   host: ""
   path: "/"
+  hosts: []
+  #  - host: chart-example.local
+  #    paths:
+  #      - path: /
+  #        pathType: Prefix
 
 podAnnotations: {}
+
+podLabels: {}
+
+livenessProbe: {}
+#  httpGet:
+#    path: /health
+#    port: http
+#  initialDelaySeconds: 30
+#  periodSeconds: 10
+
+readinessProbe: {}
+#  httpGet:
+#    path: /ready
+#    port: http
+#  initialDelaySeconds: 5
+#  periodSeconds: 5
 
 extraEnv: []
 
