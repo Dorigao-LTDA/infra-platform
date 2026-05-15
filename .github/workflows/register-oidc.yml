@@ -1,0 +1,92 @@
+name: register-oidc
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: 'Nome do repositório (formato: org/repo)'
+        required: true
+        type: string
+        default: 'Dorigao-LTDA/svc-'
+      branch:
+        description: 'Branch para registrar'
+        required: false
+        type: string
+        default: 'main'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate input
+        run: |
+          REPO="${{ inputs.repository }}"
+          BRANCH="${{ inputs.branch }}"
+          ORG="${REPO%/*}"
+          REPO_NAME="${REPO#*/}"
+
+          if [[ -z "${ORG}" || -z "${REPO_NAME}" ]]; then
+            echo "❌ Formato inválido. Use: org/repo (ex: Dorigao-LTDA/svc-pagamento)"
+            exit 1
+          fi
+
+          echo "REPO=${REPO}" >> $GITHUB_ENV
+          echo "CRED_NAME=${REPO_NAME}-${BRANCH}" >> $GITHUB_ENV
+          echo "SUBJECT=repo:${REPO}:ref:refs/heads/${BRANCH}" >> $GITHUB_ENV
+
+      - name: Check if federated credential already exists
+        id: check
+        run: |
+          APP_ID="${{ secrets.AZURE_CLIENT_ID }}"
+          CRED_NAME="${{ env.CRED_NAME }}"
+
+          EXISTENTE=$(az ad app federated-credential list \
+            --id "${APP_ID}" \
+            --query "[?name=='${CRED_NAME}'].name" -o tsv 2>/dev/null || true)
+
+          if [[ -n "${EXISTENTE}" ]]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create federated credential
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          APP_ID="${{ secrets.AZURE_CLIENT_ID }}"
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Criando Federated Identity Credential"
+          echo "  Repository: ${{ env.REPO }}"
+          echo "  Subject:    ${{ env.SUBJECT }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          az ad app federated-credential create \
+            --id "${APP_ID}" \
+            --parameters "{
+              \"name\": \"${{ env.CRED_NAME }}\",
+              \"issuer\": \"https://token.actions.githubusercontent.com\",
+              \"subject\": \"${{ env.SUBJECT }}\",
+              \"audiences\": [\"api://AzureADTokenExchange\"],
+              \"description\": \"OIDC for ${{ env.REPO }} - ${{ inputs.branch }} branch\"
+            }"
+
+          echo "✅ Federated credential created: ${{ env.CRED_NAME }}"
+
+      - name: Skip — already exists
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          echo "⏭️  Federated credential '${{ env.CRED_NAME }}' already exists for ${{ env.REPO }}"
