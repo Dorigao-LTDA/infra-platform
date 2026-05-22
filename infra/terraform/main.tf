@@ -17,16 +17,18 @@ provider "helm" {
 module "cluster" {
   source = "./modules/cluster"
 
-  resource_group_name   = var.resource_group_name
-  location              = var.location
-  network_address_space = var.network_address_space
-  subnet_address_prefix = var.subnet_address_prefix
-  aks_name              = var.aks_name
-  kubernetes_version    = var.kubernetes_version
-  node_count            = var.node_count
-  node_vm_size          = var.node_vm_size
-  acr_name              = var.acr_name
-  acr_sku               = var.acr_sku
+  resource_group_name       = var.resource_group_name
+  location                  = var.location
+  network_address_space     = var.network_address_space
+  subnet_address_prefix     = var.subnet_address_prefix
+  aks_name                  = var.aks_name
+  kubernetes_version        = var.kubernetes_version
+  node_count                = var.node_count
+  node_vm_size              = var.node_vm_size
+  enable_cluster_autoscaler = var.enable_cluster_autoscaler
+  node_pool_max_count       = var.node_pool_max_count
+  acr_name                  = var.acr_name
+  acr_sku                   = var.acr_sku
 }
 
 module "argocd" {

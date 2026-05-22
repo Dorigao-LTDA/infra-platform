@@ -43,6 +43,18 @@ variable "node_vm_size" {
   default     = "Standard_B2s"
 }
 
+variable "enable_cluster_autoscaler" {
+  type        = bool
+  description = "Enable AKS cluster autoscaler"
+  default     = false
+}
+
+variable "node_pool_max_count" {
+  type        = number
+  description = "Maximum node count for cluster autoscaler"
+  default     = 3
+}
+
 variable "network_address_space" {
   type        = list(string)
   description = "VNet address space"

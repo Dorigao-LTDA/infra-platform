@@ -4,6 +4,8 @@ acr_name                    = "acrctframework"
 location                    = "brazilsouth"
 node_count                  = 2
 node_vm_size                = "Standard_D2s_v6"
+enable_cluster_autoscaler   = true
+node_pool_max_count         = 5
 enable_argocd_public_access = false
 
 # Corporate defaults (set true after import if resources already exist)
