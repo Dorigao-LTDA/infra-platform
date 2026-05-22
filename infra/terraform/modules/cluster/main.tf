@@ -43,6 +43,9 @@ resource "azurerm_kubernetes_cluster" "main" {
     vm_size              = var.node_vm_size
     vnet_subnet_id       = azurerm_subnet.aks.id
     orchestrator_version = var.kubernetes_version != "" ? var.kubernetes_version : null
+    auto_scaling_enabled = var.enable_cluster_autoscaler
+    min_count            = var.enable_cluster_autoscaler ? var.node_count : null
+    max_count            = var.enable_cluster_autoscaler ? var.node_pool_max_count : null
   }
 
   identity {
