@@ -64,22 +64,22 @@ Para bootstrap local, exporte:
 - `TF_BACKEND_CONTAINER`
 - `TF_BACKEND_KEY` (opcional, default: `terraform.tfstate`)
 
-## Opcoes de IP estatico (corporativo)
+## Opções de IP estático (corporativo)
 
-Por padrao, o Argo CD nao usa IP publico.
-Para habilitar exposicao publica explicitamente:
+Por padrão, o Argo CD não usa IP público.
+Para habilitar exposição pública explicitamente:
 - `enable_argocd_public_access = true`
 - `manage_networking_rg = true` para criar o RG de networking.
 - `manage_ingress_public_ip = true` para criar o Public IP.
 
-Se o RG/IP ja existem, importe antes de ativar as flags:
+Se o RG/IP já existem, importe antes de ativar as flags:
 
 ```bash
 terraform import module.ingress.azurerm_resource_group.networking /subscriptions/<SUB_ID>/resourceGroups/rg-ct-framework-networking
 terraform import module.ingress.azurerm_public_ip.ingress /subscriptions/<SUB_ID>/resourceGroups/rg-ct-framework-networking/providers/Microsoft.Network/publicIPAddresses/ingress-ct-framework
 ```
 
-Variaveis relevantes:
+Variáveis relevantes:
 - `networking_resource_group_name`
 - `ingress_public_ip_name`
 - `ingress_public_ip_sku`

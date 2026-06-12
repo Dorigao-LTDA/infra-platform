@@ -1,7 +1,21 @@
 # Helm Charts
 
-Este diretório contém o chart base para microserviços (`service-chart`).
+Chart generico para microsservicos (`service-chart`).
 
-## Uso rápido
-1. Ajustar `repository` e `tag` no `values.yaml` do serviço desejado.
-2. Publicar chart/values no fluxo GitOps do ambiente.
+## O que faz
+
+O chart cria Deployment, Service (ClusterIP:8080) e Ingress (opcional) para cada microsservico. Injeta automaticamente as variaveis de ambiente OpenTelemetry:
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT`: `http://alloy.observability.svc.cluster.local:4318`
+- `OTEL_SERVICE_NAME`: derivado do nome do release
+- `OTEL_RESOURCE_ATTRIBUTES`: configuravel via values
+
+## Uso
+
+Cada servico tem seu proprio arquivo de values em `central-gitops/deploy/helm/values/{servico}.yaml`. O placeholder `REPLACE_WITH_ACR` no campo `image.repository` deve ser substituido pelo login server do ACR antes do deploy.
+
+## Templates
+
+- `deployment.yaml`: Deployment com probes, env vars OTel, init containers, volumes
+- `service.yaml`: Service ClusterIP na porta 8080
+- `ingress.yaml`: Ingress NGINX (habilitado via values)
