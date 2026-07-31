@@ -59,6 +59,19 @@ module "ingress" {
   argocd_public_ip                    = var.argocd_public_ip
 }
 
+module "chaos_mesh" {
+  source = "./modules/chaos-mesh"
+
+  chaos_mesh_namespace     = var.chaos_mesh_namespace
+  chaos_mesh_chart_repo    = var.chaos_mesh_chart_repo
+  chaos_mesh_chart_name    = var.chaos_mesh_chart_name
+  chaos_mesh_chart_version = var.chaos_mesh_chart_version
+
+  providers = {
+    helm = helm
+  }
+}
+
 module "external_secrets" {
   source = "./modules/external-secrets"
   count  = var.enable_external_secrets ? 1 : 0
