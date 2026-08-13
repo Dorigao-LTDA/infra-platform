@@ -228,3 +228,9 @@ variable "key_vault_secret_basic_auth_name" {
   description = "Key Vault secret name for Argo CD basic auth"
   default     = "argocd-basic-auth"
 }
+
+variable "test_history_storage_account_name" {
+  type        = string
+  description = "Storage account name for performance test history (run comparison)"
+  default     = "stctframeworkhist"
+}

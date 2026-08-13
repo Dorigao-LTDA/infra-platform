@@ -94,3 +94,12 @@ module "external_secrets" {
     helm = helm
   }
 }
+
+module "test_history" {
+  source = "./modules/test-history"
+
+  storage_account_name       = var.test_history_storage_account_name
+  resource_group_name        = var.resource_group_name
+  location                   = var.location
+  runner_principal_object_id = data.azurerm_client_config.current.object_id
+}

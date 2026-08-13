@@ -58,3 +58,13 @@ output "argocd_port_forward_command" {
   value       = "kubectl -n ${var.argocd_namespace} port-forward svc/argocd-server 8080:443"
   description = "Command to access Argo CD using local tunnel"
 }
+
+output "test_history_storage_account" {
+  value       = module.test_history.storage_account_name
+  description = "Storage account name for performance test history"
+}
+
+output "test_history_container" {
+  value       = module.test_history.container_name
+  description = "Storage container name for gate results"
+}
