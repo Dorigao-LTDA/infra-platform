@@ -166,7 +166,7 @@ variable "chaos_mesh_chart_name" {
 variable "chaos_mesh_chart_version" {
   type        = string
   description = "Chaos Mesh Helm chart version"
-  default     = "2.6.3"
+  default     = "2.8.4"
 }
 
 variable "enable_external_secrets" {
