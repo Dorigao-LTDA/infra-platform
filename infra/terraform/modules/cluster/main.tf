@@ -32,9 +32,13 @@ resource "azurerm_kubernetes_cluster" "main" {
   dns_prefix          = var.aks_name
 
   network_profile {
-    network_plugin = "kubenet"
-    service_cidr   = "10.1.0.0/16"
-    dns_service_ip = "10.1.0.10"
+    # Azure CNI overlay: suporta ipsets (necessário para o Chaos Mesh NetworkChaos).
+    # kubenet (rotas de host) NÃO suporta ipset → network-delay não injeta latência.
+    network_plugin      = "azure"
+    network_plugin_mode = "overlay"
+    network_data_plane  = "cilium"
+    service_cidr        = "10.1.0.0/16"
+    dns_service_ip      = "10.1.0.10"
   }
 
   default_node_pool {
